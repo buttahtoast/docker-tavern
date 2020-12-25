@@ -11,8 +11,6 @@
           from_secret: nexus_ci_user
         password:
           from_secret: nexus_ci_password
-        password:
-          from_secret: nexus_ci_password
         registry: docker.buttahtoast.ch
         repo: docker.buttahtoast.ch/${DRONE_REPO}
         tags:
@@ -26,7 +24,7 @@
         event:
           - push
 
-    - name: Docker Hub publsih on main
+    - name: Docker Hub publish on main
       image: plugins/docker
       settings:
         username:
@@ -44,7 +42,7 @@
         event:
           - push
 
-    - name: Docker Hub publsih on tag
+    - name: Docker Hub publish on tag
       image: plugins/docker
       settings:
         username:
@@ -99,7 +97,7 @@
       environment:
         DOCKERFILE: ./Dockerfile
 
-    - name: Docker Audit
+    - name: docker_image_audit
       image: goodwithtech/dockle
       commands:
         - dockle --exit-code 1 --exit-level fatal $${DRONE_COMMIT_SHA}
@@ -111,6 +109,25 @@
           - pull_request
           - push
       depends_on: [ docker_build_check ]
+
+
+    - name: docker_security_scan
+      image: aquasec/trivy
+      commands:
+        - trivy image $${DRONE_COMMIT_SHA}
+      volumes:
+        - name: docker
+          path: /var/run/docker.sock
+      when:
+        event:
+          - pull_request
+          - push
+      depends_on: [ docker_image_audit ]
+
+
+
+
+
   volumes:
   - name: docker
     host:
