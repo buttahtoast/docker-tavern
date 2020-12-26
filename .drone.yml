@@ -1,137 +1,121 @@
-  kind: pipeline
-  type: docker
-  name: docker-build-publish
-  node:
-    location: glk
-  steps:
-    - name: docker build test on dev
-      image: plugins/docker
-      settings:
-        username:
-          from_secret: nexus_ci_user
-        password:
-          from_secret: nexus_ci_password
-        registry: docker.buttahtoast.ch
-        repo: docker.buttahtoast.ch/${DRONE_REPO}
-        tags:
-          - ${DRONE_COMMIT_SHA}
-        dockerfile: ${DOCKERFILE}
-      when:
-        branch:
-          - feature/*
-          - dev*
-          - init
-        event:
-          - push
-
-    - name: Docker Hub publish on main
-      image: plugins/docker
-      settings:
-        username:
-          from_secret: dockerhub_user
-        password:
-          from_secret: dockerhub_password
-        repo: ${DRONE_REPO}
-        tags:
-          - latest-main
-        dockerfile: ${DOCKERFILE}
-      when:
-        branch:
-          - main
-          - master
-        event:
-          - push
-
-    - name: Docker Hub publish on tag
-      image: plugins/docker
-      settings:
-        username:
-          from_secret: dockerhub_user
-        password:
-          from_secret: dockerhub_password
-        repo:  ${DRONE_REPO}
-        tags:
-          - ${VERSION_PREFIX}${DRONE_COMMIT_REF//refs\/tags\//}
-          - latest
-        dockerfile: ${DOCKERFILE}
-      when:
-        event:
-          - tag
-
-    - name: Docker Hub publsih README
-      image:  peterevans/dockerhub-description
-      environment:
-        DOCKERHUB_USERNAME:
-          from_secret: dockerhub_user
-        DOCKERHUB_PASSWORD:
-          from_secret: dockerhub_password
-        DOCKERHUB_REPOSITORY: ${DRONE_REPO}
-        README_FILEPATH: /drone/src/README.md
-      commands:
-        - /entrypoint.sh
-        - cat /action.log
-        - ls -lah
-        - ls /drone/src/
-      when:
-        event:
-          - tag
-
-  environment:
-    VERSION_PREFIX:
-    DOCKERFILE: ./Dockerfile
 ---
-  kind: pipeline
-  type: docker
-  name: docker-audit
-  node:
-    location: glk
-  steps:
-
-    - name: docker_build_check
-      image: docker
-      commands:
-        - docker build . -f $${DOCKERFILE} -t $${DRONE_COMMIT_SHA}
-      volumes:
-        - name: docker
-          path: /var/run/docker.sock
-      environment:
-        DOCKERFILE: ./Dockerfile
-
-    - name: docker_image_audit
-      image: goodwithtech/dockle
-      commands:
-        - dockle --exit-code 1 --exit-level fatal $${DRONE_COMMIT_SHA}
-      volumes:
-        - name: docker
-          path: /var/run/docker.sock
-      when:
-        event:
-          - pull_request
-          - push
-      depends_on: [ docker_build_check ]
-
-
-    - name: docker_security_scan
-      image: aquasec/trivy
-      commands:
-        - trivy image $${DRONE_COMMIT_SHA}
-      volumes:
-        - name: docker
-          path: /var/run/docker.sock
-      when:
-        event:
-          - pull_request
-          - push
-      depends_on: [ docker_image_audit ]
-
-
-
-
-
-  volumes:
-  - name: docker
-    host:
-      path: /var/run/docker.sock
+kind: pipeline
+type: docker
+name: docker-build-publish
+extends:
+  - "docker/drone.yml"
+node:
+  location: glk
+steps:
+  - name: docker build test on dev
+    image: plugins/docker
+    settings:
+      username:
+        from_secret: nexus_ci_user
+      password:
+        from_secret: nexus_ci_password
+      registry: docker.buttahtoast.ch
+      repo: docker.buttahtoast.ch/${DRONE_REPO}
+      tags:
+        - ${DRONE_COMMIT_SHA}
+      dockerfile: ${DOCKERFILE}
+    when:
+      branch:
+        - feature/*
+        - dev*
+        - init
+      event:
+        - push
+  - name: Docker Hub publish on main
+    image: plugins/docker
+    settings:
+      username:
+        from_secret: dockerhub_user
+      password:
+        from_secret: dockerhub_password
+      repo: ${DRONE_REPO}
+      tags:
+        - latest-main
+      dockerfile: ${DOCKERFILE}
+    when:
+      branch:
+        - main
+        - master
+      event:
+        - push
+  - name: Docker Hub publish on tag
+    image: plugins/docker
+    settings:
+      username:
+        from_secret: dockerhub_user
+      password:
+        from_secret: dockerhub_password
+      repo:  ${DRONE_REPO}
+      tags:
+        - ${VERSION_PREFIX}${DRONE_COMMIT_REF//refs\/tags\//}
+        - latest
+      dockerfile: ${DOCKERFILE}
+    when:
+      event:
+        - tag
+  - name: Docker Hub publsih README
+    image:  peterevans/dockerhub-description
+    environment:
+      DOCKERHUB_USERNAME:
+        from_secret: dockerhub_user
+      DOCKERHUB_PASSWORD:
+        from_secret: dockerhub_password
+      DOCKERHUB_REPOSITORY: ${DRONE_REPO}
+      README_FILEPATH: /drone/src/README.md
+    commands:
+      - /entrypoint.sh
+      - cat /action.log
+      - ls -lah
+      - ls /drone/src/
+    when:
+      event:
+        - tag
+environment:
+  VERSION_PREFIX:
+  DOCKERFILE: ./Dockerfile
+---
+kind: pipeline
+type: docker
+name: docker-audit
+node:
+  location: glk
+steps:
+  - name: docker_build_check
+    image: docker
+    commands:
+      - docker build . -f $${DOCKERFILE} -t $${DRONE_COMMIT_SHA}
+    volumes:
+      - name: docker
+        path: /var/run/docker.sock
+    environment:
+      DOCKERFILE: ./Dockerfile
+  - name: docker_image_audit
+    image: goodwithtech/dockle
+    commands:
+      - dockle --exit-code 1 --exit-level fatal $${DRONE_COMMIT_SHA}
+    when:
+      event:
+        - pull_request
+        - push
+    depends_on: [ docker_build_check ]
+  - name: docker_security_scan
+    image: aquasec/trivy
+    commands:
+      - trivy image --format json $${DRONE_COMMIT_SHA}
+    when:
+      event:
+        - pull_request
+        - push
+    depends_on: [ docker_image_audit ]
+volumes:
+- name: docker
+  host:
+    path: /var/run/docker.sock
 ---
   kind: pipeline
   type: docker
