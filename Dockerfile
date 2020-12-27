@@ -1,4 +1,4 @@
-FROM python:3-slim-buster
+FROM python:3-alpine
 
 ## Labels
 LABEL maintainer="oliverbaehler@hotmail.com, kk@sudo-i.net"
@@ -21,18 +21,18 @@ ENV TAVERN_USER_ID 1500
 ENV TAVERN_GROUP_ID 1500
 ENV SET_PERMISSIONS "true"
 
-## Copy Entrypoint
-COPY ./entrypoint.sh /
-
 ## Create Tavern User
-RUN groupadd -g "${TAVERN_GROUP_ID}" tavern && useradd -s /bin/false -u ${TAVERN_USER_ID} -m -g tavern tavern \
+RUN addgroup -g "${TAVERN_GROUP_ID}" tavern && adduser -s /bin/false -u ${TAVERN_USER_ID} -D -G tavern tavern \
+  && apk add --no-cache bash \
   && mkdir -p ${TEST_DIRECTORY} ${SCRIPT_DIRECTORY} \
-  && chown -R tavern:tavern ${TEST_DIRECTORY} ${SCRIPT_DIRECTORY} \
-  && chmod +x /entrypoint.sh && chown tavern: /entrypoint.sh
+  && chown -R tavern:tavern ${TEST_DIRECTORY} ${SCRIPT_DIRECTORY}
 
 ## Install Tavern
 USER tavern
 RUN pip install --user tavern==${TAVERN_VERSION}
+
+## Copy Entrypoint
+COPY ./entrypoint.sh /
 
 ## Working Directory
 WORKDIR "${TEST_DIRECTORY}"
