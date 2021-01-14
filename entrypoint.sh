@@ -1,6 +1,8 @@
 #!/bin/bash
 set -e
 
+export PYTHONPATH="${SCRIPT_DIRECTORY}"
+
 ## Execute Command, Defaults to Tavern
 if [[ -n "$@" ]]; then
   exec "$@"
