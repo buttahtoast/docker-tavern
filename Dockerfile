@@ -28,7 +28,7 @@ COPY ./entrypoint.sh /
 RUN groupadd -g "${TAVERN_GROUP_ID}" tavern && useradd -s /bin/false -u ${TAVERN_USER_ID} -m -g tavern tavern \
   && mkdir -p ${TEST_DIRECTORY} ${SCRIPT_DIRECTORY} \
   && chown -R tavern:tavern ${TEST_DIRECTORY} ${SCRIPT_DIRECTORY} \
-  && chmod +x /entrypoint.sh && chown tavern: /entrypoint.sh
+  && chmod +rx /entrypoint.sh && chown tavern: /entrypoint.sh
 
 ## Install Tavern
 USER tavern
