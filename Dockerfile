@@ -13,13 +13,11 @@ ENV SCRIPT_DIRECTORY "/scripts"
 
 ### Paths
 ENV PATH "~/.local/bin:${PATH}"
-ENV PYTHONPATH "$SCRIPT_DIRECTORY"
 
 ### Base Configuration
-ENV TAVERN_VERSION "1.11.1"
+ENV TAVERN_VERSION "1.12.2"
 ENV TAVERN_USER_ID 1500
 ENV TAVERN_GROUP_ID 1500
-ENV SET_PERMISSIONS "true"
 
 ## Create Tavern User
 RUN addgroup -g "${TAVERN_GROUP_ID}" tavern && adduser -s /bin/false -u ${TAVERN_USER_ID} -D -G tavern tavern \
@@ -29,7 +27,7 @@ RUN addgroup -g "${TAVERN_GROUP_ID}" tavern && adduser -s /bin/false -u ${TAVERN
 
 ## Install Tavern
 USER tavern
-RUN pip install --user tavern==${TAVERN_VERSION}
+RUN pip install --force-reinstall --user tavern==${TAVERN_VERSION} 
 
 ## Copy Entrypoint
 COPY ./entrypoint.sh /
@@ -37,5 +35,6 @@ COPY ./entrypoint.sh /
 ## Working Directory
 WORKDIR "${TEST_DIRECTORY}"
 
+VOLUME ["/tavern"]
 ## EntryPoint
 ENTRYPOINT ["/entrypoint.sh"]
